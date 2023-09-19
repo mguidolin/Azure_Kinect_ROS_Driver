@@ -102,6 +102,10 @@ def generate_launch_description():
         default_value="",
         description="Sensor serial number. If none provided, the first sensor will be selected"),
     DeclareLaunchArgument(
+        'tf_prefix',
+        default_value="",
+        description="The prefix prepended to tf frame ID's"),
+    DeclareLaunchArgument(
         'recording_file',
         default_value="",
         description="Absolute path to a mkv recording file which will be used with the playback api instead of opening a device"),

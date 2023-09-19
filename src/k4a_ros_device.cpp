@@ -68,6 +68,7 @@ K4AROSDevice::K4AROSDevice()
   this->declare_parameter("rgb_point_cloud", rclcpp::ParameterValue(false));
   this->declare_parameter("point_cloud_in_depth_frame", rclcpp::ParameterValue(true));
   this->declare_parameter("sensor_sn", rclcpp::ParameterValue(""));
+  this->declare_parameter("tf_prefix", rclcpp::ParameterValue(""));
   this->declare_parameter("recording_file", rclcpp::ParameterValue(""));
   this->declare_parameter("recording_loop_enabled", rclcpp::ParameterValue(false));
   this->declare_parameter("body_tracking_enabled", rclcpp::ParameterValue(false));
@@ -83,6 +84,8 @@ K4AROSDevice::K4AROSDevice()
   this->get_parameter_or(#param_variable, params_.param_variable, param_default_val);
   ROS_PARAM_LIST
 #undef LIST_ENTRY
+
+  params_.sensor_sn.erase(std::remove_if(params_.sensor_sn.begin(), params_.sensor_sn.end(), [](char c){return !isdigit(c);}), params_.sensor_sn.end());
 
   if (params_.recording_file != "")
   {
@@ -768,7 +771,7 @@ k4a_result_t K4AROSDevice::getBodyMarker(const k4abt_body_t& body, std::shared_p
 
   // Set the lifetime to 0.25 to prevent flickering for even 5fps configurations.
   // New markers with the same ID will replace old markers as soon as they arrive.
-  marker_msg->lifetime = rclcpp::Duration(0.25);
+  marker_msg->lifetime = rclcpp::Duration::from_seconds(0.25);
   marker_msg->id = body.id * 100 + jointType;
   marker_msg->type = Marker::SPHERE;
 
@@ -790,6 +793,8 @@ k4a_result_t K4AROSDevice::getBodyMarker(const k4abt_body_t& body, std::shared_p
   marker_msg->pose.orientation.x = orientation.wxyz.x;
   marker_msg->pose.orientation.y = orientation.wxyz.y;
   marker_msg->pose.orientation.z = orientation.wxyz.z;
+
+  marker_msg->text = std::to_string(body.skeleton.joints[jointType].confidence_level);
 
   return K4A_RESULT_SUCCEEDED;
 }
@@ -868,7 +873,7 @@ void K4AROSDevice::framePublisherThread()
   calibration_data_.getRgbCameraInfo(depth_rect_camera_info);
   calibration_data_.getDepthCameraInfo(ir_raw_camera_info);
 
-  const std::chrono::milliseconds firstFrameWaitTime = std::chrono::milliseconds(4 * 1000);
+  const std::chrono::milliseconds firstFrameWaitTime = std::chrono::milliseconds(4000 * 1000);
   const std::chrono::milliseconds regularFrameWaitTime = std::chrono::milliseconds(1000 * 5 / params_.fps);
   std::chrono::milliseconds waitTime = firstFrameWaitTime;
 
